@@ -47,6 +47,10 @@ _RAW_HEADER_ASCII = b"Title:"
 _RAW_HEADER_UTF16 = b"\xff\xfeT\x00i\x00t\x00l\x00e\x00:\x00"
 
 
+def _job_source_path(job: SimulationJob | BatchJob) -> Path:
+    return job.source_circuit if isinstance(job, SimulationJob) and job.source_circuit else job.netlist
+
+
 def _has_valid_raw(path: Path | None) -> bool:
     """True if ``path`` looks like a real LTspice ``.raw`` file.
 
@@ -217,7 +221,7 @@ class JobRegistry:
         try:
             from ltspice_mcp.lib import job_store
 
-            fresh = job_store.load_job(job.job_id, job.netlist)
+            fresh = job_store.load_job(job.job_id, _job_source_path(job))
         except Exception as e:
             logger.debug("refresh_foreign_job %s: %s", job.job_id, e)
             return job
@@ -255,7 +259,7 @@ class JobRegistry:
         try:
             from ltspice_mcp.lib import job_store
 
-            fresh = await asyncio.to_thread(job_store.load_job, job.job_id, job.netlist)
+            fresh = await asyncio.to_thread(job_store.load_job, job.job_id, _job_source_path(job))
         except Exception as e:
             logger.debug("refresh_foreign_job %s: %s", job.job_id, e)
             return job

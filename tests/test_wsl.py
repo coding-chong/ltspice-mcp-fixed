@@ -1,7 +1,9 @@
+# pyright: reportArgumentType=false
+
 """Unit tests for WSL detection and path conversion."""
 
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from unittest.mock import MagicMock, mock_open, patch
 
 from ltspice_mcp.lib.wsl import (
@@ -65,7 +67,7 @@ class TestToWindowsPath:
 
         wsl_mod._is_wsl_cached = False
 
-        path = Path("/tmp/test.cir")
+        path = PurePosixPath("/tmp/test.cir")
         assert to_windows_path(path) == "/tmp/test.cir"
 
     def test_relative_path_passthrough(self):
@@ -91,7 +93,7 @@ class TestToWindowsPath:
 
         wsl_mod._is_wsl_cached = True
         with patch("subprocess.run", side_effect=FileNotFoundError):
-            result = to_windows_path(Path("/tmp/foo"))
+            result = to_windows_path(PurePosixPath("/tmp/foo"))
             assert result == "/tmp/foo"
 
     def test_wslpath_failure(self):
@@ -100,7 +102,7 @@ class TestToWindowsPath:
         wsl_mod._is_wsl_cached = True
         err = subprocess.CalledProcessError(1, "wslpath", stderr="bad path")
         with patch("subprocess.run", side_effect=err):
-            result = to_windows_path(Path("/tmp/foo"))
+            result = to_windows_path(PurePosixPath("/tmp/foo"))
             assert result == "/tmp/foo"
 
     def test_wslpath_timeout_falls_back(self):
@@ -110,7 +112,7 @@ class TestToWindowsPath:
 
         wsl_mod._is_wsl_cached = True
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("wslpath", 15)):
-            assert to_windows_path(Path("/tmp/foo")) == "/tmp/foo"
+            assert to_windows_path(PurePosixPath("/tmp/foo")) == "/tmp/foo"
 
     def test_wslpath_passes_timeout(self):
         import ltspice_mcp.lib.wsl as wsl_mod
@@ -123,7 +125,7 @@ class TestToWindowsPath:
             return MagicMock(stdout="C:\\x\n", stderr="", returncode=0)
 
         with patch("subprocess.run", side_effect=fake_run):
-            to_windows_path(Path("/mnt/c/x"))
+            to_windows_path(PurePosixPath("/mnt/c/x"))
         assert captured.get("timeout") == 15
 
 

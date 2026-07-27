@@ -15,7 +15,7 @@ class TestMain:
 
         monkeypatch.setattr(sys, "argv", ["ltspice-mcp", "--config", str(cfg_path)])
         with (
-            patch("asyncio.run") as mock_run,
+            patch("asyncio.run", side_effect=lambda coro: coro.close()) as mock_run,
             patch("os.dup", return_value=99),
             patch("os.open", return_value=98),
             patch("os.dup2"),
@@ -29,7 +29,7 @@ class TestMain:
         monkeypatch.delenv("LTSPICE_MCP_CONFIG", raising=False)
         monkeypatch.setattr(sys, "argv", ["ltspice-mcp"])
         with (
-            patch("asyncio.run") as mock_run,
+            patch("asyncio.run", side_effect=lambda coro: coro.close()) as mock_run,
             patch("os.dup", return_value=99),
             patch("os.open", return_value=98),
             patch("os.dup2"),

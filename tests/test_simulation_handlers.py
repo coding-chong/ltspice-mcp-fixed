@@ -3,7 +3,7 @@
 import asyncio
 import typing
 from datetime import timedelta
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -606,8 +606,8 @@ class TestFormatSuccessResponse:
         }
         job = _stub_job(
             output_basename="myrun",
-            output_alias_raw=Path("/tmp/myrun.raw"),
-            output_alias_log=Path("/tmp/myrun.log"),
+            output_alias_raw=PurePosixPath("/tmp/myrun.raw"),
+            output_alias_log=PurePosixPath("/tmp/myrun.log"),
         )
         result = _format_success_response(job, summary, None)
         assert result.structuredContent is not None

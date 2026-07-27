@@ -27,6 +27,8 @@ def resolve_safe_path(user_path: str, allowed_dirs: list[Path]) -> Path:
     """
     if not allowed_dirs:
         raise PathSecurityError("No allowed directories configured")
+    if "\x00" in user_path:
+        raise PathSecurityError("Path contains an embedded NUL byte")
 
     # Convert to Path object
     path = Path(user_path)

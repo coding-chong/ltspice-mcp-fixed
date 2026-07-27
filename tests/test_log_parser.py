@@ -575,7 +575,8 @@ class TestParseMeasurementsFourierNan:
             "Total Harmonic Distortion:   -nan%\n"
             "\n"
             "vrms_late: RMS(V(out) )=0 FROM 0.03 TO 0.05\n"
-            "Total elapsed time: 0.001 seconds.\n"
+            "Total elapsed time: 0.001 seconds.\n",
+            encoding="utf-8",
         )
         # Should NOT raise — the sanitizer should let .MEAS still parse.
         result = parse_measurements(log)
@@ -688,7 +689,7 @@ class TestLogReadCap:
         # Under the cap → full read, unchanged behavior.
         log = tmp_path / "ok.log"
         body = "LTspice\n.step rval=100\n" + "line\n" * 50
-        log.write_text(body)
+        log.write_bytes(body.encode("utf-8"))
         assert read_log_text(log) == body
 
 
@@ -776,7 +777,7 @@ class TestStepTempDegreeStripping:
 
     def test_temp_axis_strips_degree(self, tmp_path: Path):
         log = tmp_path / "step_temp.log"
-        log.write_text("Circuit: foo\n.step temp=-40°\n.step temp=27°\n.step temp=125°\n")
+        log.write_text("Circuit: foo\n.step temp=-40°\n.step temp=27°\n.step temp=125°\n", encoding="utf-8")
         steps = parse_step_iterations(log)
         # Without the ° fix, the value capture would include '°' and
         # parse_value would fail downstream — the row would be dropped.

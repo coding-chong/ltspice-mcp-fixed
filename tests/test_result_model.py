@@ -258,12 +258,24 @@ class TestQueryValueJobRun:
         with pytest.raises(ResultError, match="exactly one"):
             await handle_query_value(QueryValueInput(signal="V(out)", at="1"), state_no_sim)
 
-    async def test_step_axis_with_job_id_rejected(self, state_no_sim: SessionState):
-        with pytest.raises(ResultError, match="can't be combined with 'job_id'"):
-            await handle_query_value(
-                QueryValueInput(job_id="b1", step_axis="R", step_value="1k", signal="V(out)"),
-                state_no_sim,
-            )
+    async def test_step_axis_with_job_id_resolves_single_job(
+        self, state_no_sim: SessionState, work_dir: Path
+    ):
+        raw_path = work_dir / "single_step.raw"
+        raw = MagicMock()
+        raw.get_trace_names.return_value = ["V(out)"]
+        raw.get_wave.return_value = np.array([1.0, 2.0])
+        raw.get_axis.return_value = np.array([0.0, 1.0])
+        raw.get_steps.return_value = [{"R": 1000.0}]
+        _inject_raw(state_no_sim, raw_path, raw)
+        job = _sim(state_no_sim, raw=raw_path, log=raw_path.with_suffix(".log"))
+        job.job_id = "j1"
+
+        result = await handle_query_value(
+            QueryValueInput(job_id="j1", step_axis="R", step_value="1k", signal="V(out)", at="1"),
+            state_no_sim,
+        )
+        assert result.structuredContent is not None
 
 
 @pytest.mark.asyncio

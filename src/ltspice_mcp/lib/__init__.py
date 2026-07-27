@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,10 @@ from pathlib import Path
 from typing import IO, Any, Literal
 
 logger = logging.getLogger(__name__)
+
+_WINDOWS_REPLACE_ATTEMPTS = 5
+_WINDOWS_REPLACE_INITIAL_DELAY = 0.01
+_WINDOWS_REPLACE_MAX_DELAY = 0.2
 
 _EST = timezone(timedelta(hours=-5), name="EST")
 
@@ -90,6 +95,24 @@ def _fsync_dir(path: Path) -> None:
         os.close(dir_fd)
 
 
+def _replace_with_retry(src: Path, dst: Path) -> None:
+    """Replace a destination, retrying transient Windows sharing conflicts."""
+    if sys.platform != "win32":
+        os.replace(src, dst)
+        return
+
+    delay = _WINDOWS_REPLACE_INITIAL_DELAY
+    for attempt in range(_WINDOWS_REPLACE_ATTEMPTS):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt == _WINDOWS_REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, _WINDOWS_REPLACE_MAX_DELAY)
+
+
 def _commit(tmp_path: Path, dst: Path, *, overwrite: bool) -> None:
     """Atomically move ``tmp_path`` over ``dst``.
 
@@ -100,7 +123,7 @@ def _commit(tmp_path: Path, dst: Path, *, overwrite: bool) -> None:
     (which fails if ``dst`` exists, unlike POSIX ``rename``).
     """
     if overwrite:
-        os.replace(tmp_path, dst)
+        _replace_with_retry(tmp_path, dst)
         return
     if sys.platform == "win32":
         # On Windows, os.rename raises if dst exists — that's the behavior

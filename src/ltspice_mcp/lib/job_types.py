@@ -284,6 +284,10 @@ class SimulationJob:
         "queued", "running", "completed", "failed", "timeout", "cancelled", "interrupted"
     ]
     started_at: datetime
+    # Original user circuit. For an .asc run, ``netlist`` is the exported
+    # runnable snapshot while this remains the schematic used for persistence
+    # and recent-circuit grouping.
+    source_circuit: Path | None = None
     completed_at: datetime | None = None
     raw_file: Path | None = None
     log_file: Path | None = None

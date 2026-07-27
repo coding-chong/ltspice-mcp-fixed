@@ -110,10 +110,9 @@ def _serialize_sim_job(job: SimulationJob) -> dict:
         "schema_version": SCHEMA_VERSION,
         "job_id": job.job_id,
         "kind": "simulation",
-        # Additive within schema v2: older records lack it; readers treat a
-        # missing pid as a dead owner (the pre-pid behavior).
         "pid": job.owner_pid,
         "netlist": str(job.netlist),
+        "source_circuit": str(job.source_circuit) if job.source_circuit else None,
         "simulator": job.simulator,
         "status": job.status,
         "started_at": job.started_at.isoformat(),
@@ -173,8 +172,9 @@ def serialize_job(job: SimulationJob | BatchJob) -> dict:
 
 
 def save_job(job: SimulationJob | BatchJob) -> Path:
-    """Persist a job to its circuit's sidecar directory. Returns the file path."""
-    target_dir = sidecar_dir(job.netlist)
+    """Persist a job to its source circuit's sidecar directory."""
+    source = job.source_circuit if isinstance(job, SimulationJob) else None
+    target_dir = sidecar_dir(source or job.netlist)
     path = _job_file(job.job_id, target_dir)
     atomic_write_json(path, serialize_job(job), default=_json_default)
     logger.debug("Persisted job %s to %s", job.job_id, path)
@@ -183,7 +183,8 @@ def save_job(job: SimulationJob | BatchJob) -> Path:
 
 def delete_job(job: SimulationJob | BatchJob) -> None:
     """Delete a job's persisted JSON file, if present."""
-    path = _job_file(job.job_id, sidecar_dir(job.netlist))
+    source = job.source_circuit if isinstance(job, SimulationJob) else None
+    path = _job_file(job.job_id, sidecar_dir(source or job.netlist))
     try:
         path.unlink()
     except FileNotFoundError:
@@ -299,9 +300,11 @@ def _deserialize_sim_job(data: dict) -> SimulationJob:
     log_file = Path(data["log_file"]) if data.get("log_file") else None
     alias_raw = Path(data["output_alias_raw"]) if data.get("output_alias_raw") else None
     alias_log = Path(data["output_alias_log"]) if data.get("output_alias_log") else None
+    netlist = Path(str(data["netlist"]))
     job = SimulationJob(
         job_id=str(data["job_id"]),
-        netlist=Path(str(data["netlist"])),
+        netlist=netlist,
+        source_circuit=(Path(str(data["source_circuit"])) if data.get("source_circuit") else netlist),
         simulator=str(data.get("simulator", "unknown")),
         status=status,  # type: ignore[arg-type]
         started_at=started,

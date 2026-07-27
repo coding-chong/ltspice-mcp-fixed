@@ -60,7 +60,7 @@ class TestToolCountInDocs:
     def test_doc_count_matches_registry(self, rel: str, profile: str, template: str) -> None:
         full, agentic = _profile_counts()
         n = full if profile == "full" else agentic
-        text = (ROOT / rel).read_text()
+        text = (ROOT / rel).read_text(encoding="utf-8")
         assert re.search(template.format(n=n), text), (
             f"{rel} must list {n} tools for the {profile} profile "
             f"(expected pattern {template.format(n=n)!r}); the registry "
@@ -103,7 +103,7 @@ class TestStaleToolNamesInDocs:
         registered = _registered_names()
         failures: list[str] = []
         for rel in DOC_PATHS:
-            text = (ROOT / rel).read_text()
+            text = (ROOT / rel).read_text(encoding="utf-8")
             stale = sorted(f"ltspice_{name}" for name in registered if f"ltspice_{name}" in text)
             if stale:
                 failures.append(f"  {rel}: {stale}")
@@ -124,7 +124,7 @@ class TestStaleToolNamesInDocs:
         """
         failures: list[str] = []
         for rel in DOC_PATHS:
-            text = (ROOT / rel).read_text()
+            text = (ROOT / rel).read_text(encoding="utf-8")
             stale = sorted(
                 name
                 for name in REMOVED_TOOL_NAMES
@@ -150,7 +150,7 @@ def _ltspice_refs_in_strings(py_path: Path) -> set[str]:
     only — that's where tool-name rot actually hurts users.
     """
     try:
-        tree = ast.parse(py_path.read_text())
+        tree = ast.parse(py_path.read_text(encoding="utf-8"))
     except SyntaxError:
         return set()
     pat = re.compile(r"\bltspice_[a-z][a-z_]+\b")

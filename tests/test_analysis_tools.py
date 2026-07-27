@@ -1937,7 +1937,7 @@ class TestBodeMetricsAllSteps:
         text = res.content[0].text
         assert text.count(sentinel) == 1
 
-    def test_warning_coverage_lists_indices_for_large_subset(self):
+    async def test_warning_coverage_lists_indices_for_large_subset(self):
         # A warning on a >6 SUBSET of steps must enumerate every affected step
         # index, not collapse to a bare "N of M" count — otherwise a structured
         # consumer can't tell which sweep cases emitted it.
@@ -2225,11 +2225,11 @@ class TestQueryValueArgErrorHints:
     'check_job for details' dispatch hint — they are caller mistakes, not run
     failures, so they carry ``show_hint=False``."""
 
-    async def test_step_axis_with_job_id_conflict_no_hint(
+    async def test_step_axis_raw_file_and_job_id_conflict_no_hint(
         self, state_no_sim: SessionState, work_dir: Path
     ):
-        # step_axis selects a step of a .step raw; job_id already selects a run.
-        # The conflict is a caller mistake — suppress the generic hint.
+        # raw_file and job_id are still mutually exclusive; job_id alone is
+        # valid for selecting an inner .step of a single simulation job.
         path = work_dir / "conflict.raw"
         _inject_raw(state_no_sim, path, _ac_raw_mock())
         with pytest.raises(ResultError) as excinfo:

@@ -40,15 +40,41 @@ class TestAtomicWriteText:
         atomic_write_text(path, "data")
         assert path.read_text(encoding="utf-8") == "data"
 
-    def test_cleans_up_tempfile_on_rename_failure(self, tmp_path: Path) -> None:
+    def test_retries_transient_windows_replace_failure(self, tmp_path: Path) -> None:
         path = tmp_path / "out.txt"
+        attempts = 0
+        real_replace = os.replace
+
+        def flaky_replace(src, dst):
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                raise PermissionError(5, "sharing violation")
+            real_replace(src, dst)
+
         with (
-            patch("ltspice_mcp.lib.os.replace", side_effect=OSError("boom")),
-            pytest.raises(OSError, match="boom"),
+            patch("ltspice_mcp.lib.sys.platform", "win32"),
+            patch("ltspice_mcp.lib.os.replace", side_effect=flaky_replace),
+            patch("ltspice_mcp.lib.time.sleep") as sleep,
         ):
             atomic_write_text(path, "data")
-        assert not path.exists()
-        assert list(tmp_path.iterdir()) == []
+
+        assert attempts == 3
+        assert path.read_text() == "data"
+        assert sleep.call_count == 2
+
+    def test_replace_retry_exhaustion_cleans_tempfile(self, tmp_path: Path) -> None:
+        path = tmp_path / "out.txt"
+        path.write_text("old")
+        with (
+            patch("ltspice_mcp.lib.sys.platform", "win32"),
+            patch("ltspice_mcp.lib.os.replace", side_effect=PermissionError(5, "busy")),
+            patch("ltspice_mcp.lib.time.sleep"),
+            pytest.raises(PermissionError),
+        ):
+            atomic_write_text(path, "new")
+        assert path.read_text() == "old"
+        assert list(tmp_path.iterdir()) == [path]
 
     def test_no_partial_file_on_crash_mid_write(self, tmp_path: Path) -> None:
         """A crash during write must leave the destination untouched."""

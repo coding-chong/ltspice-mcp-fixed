@@ -517,8 +517,9 @@ class QueryValueInput(ToolInput):
         default=None,
         description=(
             "Select a run of a stepped (.step) sweep by its parameter VALUE instead "
-            "of an index: the parameter name (e.g. 'temp', 'Rval'). Pair with "
-            "``step_value``. The nearest step is chosen and flagged with "
+            "of an index. When using ``job_id``, this selects a step inside that "
+            "single job's RAW; for batch jobs use ``run_index`` first. The parameter "
+            "name (e.g. 'temp', 'Rval') is paired with ``step_value``. The nearest "
             "``exact_match``. NOT for a bare non-stepped .dc/.ac sweep, where the "
             "swept variable is the run's primary axis — query it directly with "
             "``at`` instead (e.g. ``at='27'`` on a `.dc temp` sweep)."
@@ -1707,29 +1708,26 @@ def _query_x_label(raw, sim_type: str) -> str:
 )
 async def handle_query_value(args: QueryValueInput, state: SessionState):
     """Query signal value at a specific time/frequency, or at a chosen sweep step."""
-    # Step-by-axis-value mode folds in the former step_get tool. It selects a
-    # step WITHIN a single .step raw, so it is raw_file-only — ``job_id`` already
-    # selects the run, so the two selection mechanisms are mutually exclusive.
+    # Step-by-axis-value mode selects a step within the resolved RAW. A
+    # single job may itself contain a native .step sweep, so job_id and the
+    # inner step selector are compatible; batch jobs still use run_index.
     if args.step_axis is not None:
-        if args.job_id is not None:
-            raise ResultError(
-                "query_value: 'step_axis' selects a step of a .step raw and can't be "
-                "combined with 'job_id' (the run is already selected — pass 'at').",
-                show_hint=False,
-            )
-        step_raw = args.raw_file
-        if step_raw is None:
-            raise ResultError("query_value: 'step_axis' requires 'raw_file'.", show_hint=False)
         if args.step_value is None:
             raise ResultError(
                 "query_value: 'step_value' is required when 'step_axis' is given.",
                 show_hint=False,
             )
+        if args.raw_file is None and args.job_id is None:
+            raise ResultError(
+                "query_value: 'step_axis' requires 'raw_file' or 'job_id'.",
+                show_hint=False,
+            )
+        step_raw = _effective_raw_path(args.raw_file, args.job_id, args.run_index, state)
         from ltspice_mcp.tools.circuit import StepGetInput, handle_step_get
 
         result = await handle_step_get(
             StepGetInput(
-                raw_file=step_raw,
+                raw_file=str(step_raw),
                 axis=args.step_axis,
                 value=args.step_value,
                 signal=args.signal,
@@ -1742,7 +1740,7 @@ async def handle_query_value(args: QueryValueInput, state: SessionState):
         # real-looking value from a failed solve just like the direct path, so it
         # gets the same diagnostic relay. The handler resolved the signal name
         # into structuredContent; reuse it for the per-signal filter.
-        step_raw_path = safe_path(step_raw, state)
+        step_raw_path = safe_path(str(step_raw), state)
         resolved = (result.structuredContent or {}).get("signal") or args.signal
         return await _relay_diagnostics_into(result, step_raw_path, resolved, args.format)
 

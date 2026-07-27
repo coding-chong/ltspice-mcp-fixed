@@ -7,7 +7,9 @@ input, and edge cases that the happy-path tests don't cover.
 
 import math
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -460,23 +462,31 @@ class TestIsWindowsNativePath:
     def test_drive_letter_match(self):
         from ltspice_mcp.lib.wsl import is_windows_native_path
 
-        assert is_windows_native_path(Path("/mnt/c/Users/foo")) is True
+        assert is_windows_native_path(
+            cast(Path, SimpleNamespace(resolve=lambda: PurePosixPath("/mnt/c/Users/foo")))
+        ) is True
 
     def test_cdrom_not_drive(self):
         from ltspice_mcp.lib.wsl import is_windows_native_path
 
         # /mnt/cdrom is not a Windows drive letter — must NOT match
-        assert is_windows_native_path(Path("/mnt/cdrom/foo")) is False
+        assert is_windows_native_path(
+            cast(Path, SimpleNamespace(resolve=lambda: PurePosixPath("/mnt/cdrom/foo")))
+        ) is False
 
     def test_extdata_not_drive(self):
         from ltspice_mcp.lib.wsl import is_windows_native_path
 
-        assert is_windows_native_path(Path("/mnt/extdata/x")) is False
+        assert is_windows_native_path(
+            cast(Path, SimpleNamespace(resolve=lambda: PurePosixPath("/mnt/extdata/x")))
+        ) is False
 
     def test_mnt_alone_not_drive(self):
         from ltspice_mcp.lib.wsl import is_windows_native_path
 
-        assert is_windows_native_path(Path("/mnt")) is False
+        assert is_windows_native_path(
+            cast(Path, SimpleNamespace(resolve=lambda: PurePosixPath("/mnt")))
+        ) is False
 
 
 # ---------------------------------------------------------------------------

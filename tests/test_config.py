@@ -1,7 +1,7 @@
 """Unit tests for configuration loading."""
 
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -320,7 +320,7 @@ class TestWslLtspiceAutodetect:
             patch.dict("ltspice_mcp.lib.simulator.SIMULATORS", {"ltspice": fake_cls}),
             patch(
                 "ltspice_mcp.lib.wsl.find_windows_ltspice_exe",
-                return_value=Path("/mnt/c/x/LTspice.exe"),
+                return_value=PurePosixPath("/mnt/c/x/LTspice.exe"),
             ),
         ):
             sim._autodetect_wsl_ltspice(diagnostics)

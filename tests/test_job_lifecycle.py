@@ -237,7 +237,7 @@ class TestStateMachineStructure:
             if py.name == "job_lifecycle.py":
                 continue
             try:
-                tree = ast.parse(py.read_text())
+                tree = ast.parse(py.read_text(encoding="utf-8"))
             except SyntaxError:
                 continue
             for node in ast.walk(tree):

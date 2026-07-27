@@ -116,17 +116,24 @@ class TestJobStoreConcurrentThreads:
         job_store.save_job(base)
         path = job_store.sidecar_dir(circuit) / f"{job_id}.json"
 
+        errors: list[BaseException] = []
+        errors_lock = threading.Lock()
+
         def rewrite(status: str) -> None:
-            job = SimulationJob(
-                job_id=job_id,
-                netlist=circuit,
-                simulator="LTspice",
-                status=status,  # type: ignore[arg-type]
-                started_at=now(),
-                completed_at=now() if status != "running" else None,
-            )
-            for _ in range(10):
-                job_store.save_job(job)
+            try:
+                job = SimulationJob(
+                    job_id=job_id,
+                    netlist=circuit,
+                    simulator="LTspice",
+                    status=status,  # type: ignore[arg-type]
+                    started_at=now(),
+                    completed_at=now() if status != "running" else None,
+                )
+                for _ in range(10):
+                    job_store.save_job(job)
+            except BaseException as exc:
+                with errors_lock:
+                    errors.append(exc)
 
         threads = [
             threading.Thread(target=rewrite, args=(s,))
@@ -136,6 +143,9 @@ class TestJobStoreConcurrentThreads:
             t.start()
         for t in threads:
             t.join(timeout=30)
+            assert not t.is_alive()
+
+        assert errors == []
 
         # File must always be parseable; last-writer-wins semantics mean the
         # exact status is non-deterministic but the file never corrupts.

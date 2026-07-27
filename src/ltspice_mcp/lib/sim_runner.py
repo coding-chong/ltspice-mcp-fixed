@@ -380,7 +380,24 @@ def collect_run_outcome(
     if not sim_failed:
         try:
             raw_size = Path(raw_file).stat().st_size
+        except NotADirectoryError as e:
+            return RunOutcome(
+                raw_file, log_file, 0, f"Simulation finished but its raw file is unreadable: {e}"
+            )
         except FileNotFoundError:
+            raw_path = Path(raw_file)
+            try:
+                parent_is_file = raw_path.parent.is_file()
+            except OSError:
+                parent_is_file = False
+            if parent_is_file:
+                return RunOutcome(
+                    raw_file,
+                    log_file,
+                    0,
+                    "Simulation finished but its raw file is unreadable: "
+                    f"parent path is not a directory ({raw_path.parent})",
+                )
             raw_size = 0
         except OSError as e:
             # The raw exists (or at least isn't provably absent) but can't be

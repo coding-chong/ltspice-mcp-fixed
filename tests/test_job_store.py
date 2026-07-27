@@ -113,6 +113,25 @@ class TestSaveLoad:
         assert data["status"] == "completed"
         assert data["raw_file"].endswith("rc.raw")
 
+    def test_asc_job_persists_source_circuit_and_runnable_netlist(self, tmp_path: Path) -> None:
+        source = tmp_path / "divider.asc"
+        runnable = tmp_path / "divider.run-abcd.net"
+        source.write_text("Version 4\n")
+        runnable.write_text("* exported\n")
+        job = _sim_job(runnable)
+        job.source_circuit = source
+
+        path = job_store.save_job(job)
+        data = json.loads(path.read_text())
+        assert path.parent == job_store.sidecar_dir(source)
+        assert data["source_circuit"] == str(source)
+        assert data["netlist"] == str(runnable)
+
+        loaded = job_store.load_job(job.job_id, source)
+        assert isinstance(loaded, SimulationJob)
+        assert loaded.source_circuit == source
+        assert loaded.netlist == runnable
+
     def test_roundtrip_sim_job(self, tmp_path: Path) -> None:
         circuit = tmp_path / "rc.cir"
         circuit.write_text("")

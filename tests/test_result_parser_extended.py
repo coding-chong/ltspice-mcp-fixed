@@ -77,7 +77,7 @@ class TestParseFourierData:
             "Total Harmonic Distortion:   0.014047%\n"
             "\n"
             "Total elapsed time: 0.001 seconds.\n"
-        )
+        , encoding="utf-8")
         result = parse_fourier_data(log)
         assert isinstance(result, list)
         assert len(result) == 1

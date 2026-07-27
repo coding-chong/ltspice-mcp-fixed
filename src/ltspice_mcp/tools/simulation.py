@@ -335,7 +335,7 @@ async def handle_run_simulation(args: RunSimulationInput, state: SessionState):
 
     # Cheap path validation first, so a bad path reports as such even when no
     # simulator is configured.
-    resolve_netlist_path(netlist_str, state)
+    source_circuit = resolve_netlist_path(netlist_str, state)
     _validate_output_basename(args.output_basename)
 
     default_simulator = resolve_run_simulator(args.simulator, state)
@@ -360,12 +360,14 @@ async def handle_run_simulation(args: RunSimulationInput, state: SessionState):
     # to read back by name. No-op for ngspice / non-.op decks. The job_id-stamped
     # name keeps concurrent/queued runs of the same netlist from clobbering each
     # other; start_simulation deletes the copy once spicelib has staged the run.
-    # job.netlist stays the user's original path; only the simulator reads the copy.
+    # job.netlist is the runnable path consumed by the simulator; source_circuit
+    # remains the user's original path for persistence and recent-circuit views.
     run_path = inject_logopinfo(netlist_path, default_simulator, job_id)
 
     job = SimulationJob(
         job_id=job_id,
         netlist=netlist_path,
+        source_circuit=source_circuit,
         simulator=default_simulator.__name__,
         # "queued" until the runner accepts the work; then the
         # runner transitions to "running" and emits 'started'.

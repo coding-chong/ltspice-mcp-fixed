@@ -1,3 +1,5 @@
+# pyright: reportArgumentType=false
+
 """Tests for plot_waveform — interactive HTML charts opened on the desktop.
 
 Pure-helper unit tests (downsample, HTML/XSS, client classification, opener
@@ -8,7 +10,7 @@ launched. The AC dual-panel, .step overlay, and noise cases are load-bearing.
 
 import json
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 import pytest
@@ -251,7 +253,7 @@ class TestOpenInDesktop:
         monkeypatch.setattr(sys, "platform", "linux")
         calls = []
         opened, method = desktop.open_in_desktop(
-            Path("/x/plot.html"), spawn=lambda argv, **kw: calls.append(argv)
+            PurePosixPath("/x/plot.html"), spawn=lambda argv, **kw: calls.append(argv)
         )
         assert opened is True and method == "xdg-open"
         assert calls == [["xdg-open", "/x/plot.html"]]
@@ -264,7 +266,7 @@ class TestOpenInDesktop:
         def boom(*a, **k):
             raise OSError("no opener")
 
-        assert desktop.open_in_desktop(Path("/x/p.html"), spawn=boom) == (False, None)
+        assert desktop.open_in_desktop(PurePosixPath("/x/p.html"), spawn=boom) == (False, None)
 
     def test_app_window_preferred_on_wsl_with_unc_url(self, monkeypatch):
         # A chromeless Edge app window over the \\wsl.localhost UNC file URL is
@@ -299,7 +301,7 @@ class TestOpenInDesktop:
                 raise OSError("app mode unavailable")
             calls.append(argv)
 
-        opened, method = desktop.open_in_desktop(Path("/x/plot.html"), spawn=spawn)
+        opened, method = desktop.open_in_desktop(PurePosixPath("/x/plot.html"), spawn=spawn)
         assert opened is True and method == "xdg-open"
         assert calls == [["xdg-open", "/x/plot.html"]]
 

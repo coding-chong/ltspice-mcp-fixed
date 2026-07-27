@@ -1043,15 +1043,15 @@ class TestDiffCircuit:
         # not the magnitude. A real magnitude change (1u vs 2u) still surfaces.
         a = work_dir / "a.cir"
         b = work_dir / "b.cir"
-        a.write_text("* a\nR1 in out 1k\nC1 out 0 1u\n.end\n")
-        b.write_text("* b\nR1 in out 1k\nC1 out 0 1µ\n.end\n")
+        a.write_text("* a\nR1 in out 1k\nC1 out 0 1u\n.end\n", encoding="utf-8")
+        b.write_text("* b\nR1 in out 1k\nC1 out 0 1µ\n.end\n", encoding="utf-8")
         result = await handle_diff_circuit({"path_a": a.name, "path_b": b.name}, state_no_sim)
         data = result.structuredContent
         assert data is not None
         assert data["components_changed"] == [], data["components_changed"]
 
         # Guard: a genuine magnitude change is still reported.
-        b.write_text("* b\nR1 in out 1k\nC1 out 0 2u\n.end\n")
+        b.write_text("* b\nR1 in out 1k\nC1 out 0 2u\n.end\n", encoding="utf-8")
         result2 = await handle_diff_circuit({"path_a": a.name, "path_b": b.name}, state_no_sim)
         data2 = result2.structuredContent
         assert data2 is not None
